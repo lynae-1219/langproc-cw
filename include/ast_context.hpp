@@ -6,19 +6,19 @@ namespace ast {
 // compiled (e.g. function scope and variable names).
 class Context
 {
-    /* TODO decide what goes inside here */
-};
-    VOID,
     UNSIGNED_CHAR,
-    CHAR,
     UNSIGNED_SHORT,
-    SHORT,
-    UNSIGNED_INT,
-    INT,
     UNSIGNED_LONG,
-    LONG,
+    UNSIGNED_INT,
+    LONG_DOUBLE,
+    CHAR,
     FLOAT,
     DOUBLE,
-    LONG_DOUBLE,
-    STRUCT
+    INT,
+    VOID,
+    LONG,
+    STRUCT,
+    SHORT,
+};
+
 } // namespace ast
