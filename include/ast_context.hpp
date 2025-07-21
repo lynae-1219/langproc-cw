@@ -1,24 +1,45 @@
 #pragma once
+#include <unordered_map>
+#include <stack>
+#include <set>
+#include <string>
 
 namespace ast {
-// An object of class Context is passed between ast nodes during compilation.
-// This can be used to pass around information about what's currently being
-// compiled (e.g. function scope and variable names).
-class Context
-{
-    UNSIGNED_CHAR,
-    UNSIGNED_SHORT,
-    UNSIGNED_LONG,
-    UNSIGNED_INT,
-    LONG_DOUBLE,
-    CHAR,
-    FLOAT,
-    DOUBLE,
-    INT,
-    VOID,
-    LONG,
-    STRUCT,
-    SHORT,
+
+class Context {
+public:
+    enum class Type {
+        UNSIGNED_CHAR, UNSIGNED_SHORT, UNSIGNED_INT, UNSIGNED_LONG,
+        CHAR, SHORT, INT, LONG, FLOAT, DOUBLE, LONG_DOUBLE, VOID, STRUCT
+    };
+
+    // Register allocation
+    std::string AllocRegister();
+    void FreeRegister(const std::string& reg);
+
+    // Scoping & variables
+    void PushScope();
+    void PopScope();
+    void AddVariable(const std::string& name, Type type, int size);
+    Variable LookupVariable(const std::string& name);
+
+    // Labels
+    std::string NewLabel();
+
+    // Type system
+    int SizeOf(Type type) const;
+    bool IsCompatible(Type a, Type b) const;
+
+private:
+    struct Variable {
+        Type type;
+        int stack_offset;
+    };
+
+    std::set<std::string> free_registers_ = {"t0", "t1", "t2", "a0", "a1"};
+    std::stack<std::unordered_map<std::string, Variable>> symbol_tables_;
+    int stack_offset_ = 0;
+    int label_counter_ = 0;
 };
 
 } // namespace ast
