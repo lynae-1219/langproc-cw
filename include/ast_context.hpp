@@ -13,6 +13,11 @@ public:
         CHAR, SHORT, INT, LONG, FLOAT, DOUBLE, LONG_DOUBLE, VOID, STRUCT
     };
 
+    struct Variable {
+        Type type;
+        int stack_offset;
+    };
+
     // Register allocation
     std::string AllocRegister();
     void FreeRegister(const std::string& reg);
@@ -21,7 +26,7 @@ public:
     void PushScope();
     void PopScope();
     void AddVariable(const std::string& name, Type type, int size);
-    Variable LookupVariable(const std::string& name);
+    Variable LookupVariable(const std::string& name);  // Now Variable is known
 
     // Labels
     std::string NewLabel();
@@ -31,11 +36,6 @@ public:
     bool IsCompatible(Type a, Type b) const;
 
 private:
-    struct Variable {
-        Type type;
-        int stack_offset;
-    };
-
     std::set<std::string> free_registers_ = {"t0", "t1", "t2", "a0", "a1"};
     std::stack<std::unordered_map<std::string, Variable>> symbol_tables_;
     int stack_offset_ = 0;

@@ -263,7 +263,7 @@ def run_test(driver: Path) -> Result:
 
     # Simulate
     return_code, _, timed_out = run_subprocess(
-        cmd=["spike", "pk", log_path],
+        cmd=["spike", "--isa=RV32IMFD", "pk", log_path],
         timeout=RUN_TIMEOUT_SECONDS,
         log_path=f"{log_path}.simulation",
     )
