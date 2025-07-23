@@ -1,26 +1,25 @@
 #pragma once
 
 #include "ast_node.hpp"
+#include <memory>
+#include <string>
 
 namespace ast {
 
 class ReturnStatement : public Node
 {
-private:
-    NodePtr expression_;
-
 public:
-    ReturnStatement(NodePtr expression) : expression_(std::move(expression)) {}
-
+    ReturnStatement(std::unique_ptr<Node> expression);
     void EmitRISC(std::ostream& stream, Context& context) const override;
     void Print(std::ostream& stream) const override;
+
+private:
+    std::unique_ptr<Node> expression_;
 };
 
 class BreakStatement : public Node
 {
 public:
-    BreakStatement() = default;
-
     void EmitRISC(std::ostream& stream, Context& context) const override;
     void Print(std::ostream& stream) const override;
 };
@@ -28,36 +27,43 @@ public:
 class ContinueStatement : public Node
 {
 public:
-    ContinueStatement() = default;
-
     void EmitRISC(std::ostream& stream, Context& context) const override;
     void Print(std::ostream& stream) const override;
 };
 
-class GotoStatement : public Node
+class CaseStatement : public Node
 {
-private:
-    std::string label_;
-
 public:
-    GotoStatement(const std::string& label) : label_(label) {}
-
+    CaseStatement(std::unique_ptr<Node> expression, std::unique_ptr<Node> statement);
     void EmitRISC(std::ostream& stream, Context& context) const override;
     void Print(std::ostream& stream) const override;
+
+private:
+    std::unique_ptr<Node> expression_;
+    std::unique_ptr<Node> statement_;
 };
 
-class LabelStatement : public Node
+class DefaultCaseStatement : public Node
 {
-private:
-    std::string label_;
-    NodePtr statement_;
-
 public:
-    LabelStatement(const std::string& label, NodePtr statement)
-        : label_(label), statement_(std::move(statement)) {}
-
+    DefaultCaseStatement(std::unique_ptr<Node> statement);
     void EmitRISC(std::ostream& stream, Context& context) const override;
     void Print(std::ostream& stream) const override;
+
+private:
+    std::unique_ptr<Node> statement_;
+};
+
+class SwitchStatement : public Node
+{
+public:
+    SwitchStatement(std::unique_ptr<Node> expression, std::unique_ptr<Node> statement);
+    void EmitRISC(std::ostream& stream, Context& context) const override;
+    void Print(std::ostream& stream) const override;
+
+private:
+    std::unique_ptr<Node> expression_;
+    std::unique_ptr<Node> statement_;
 };
 
 } // namespace ast

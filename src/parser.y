@@ -1,34 +1,28 @@
-// Adapted from: https://www.lysator.liu.se/c/ANSI-C-grammar-y.html
-
-// TODO: you can either continue adding to this grammar file or
-// rename parser_full.y to parser.y once you're happy with
-// how this example works.
-
 %code requires {
 	#include "ast.hpp"
 	using namespace ast;
 
-	extern int yylineno;
-	extern char* yytext;
-	extern Node* g_root;
-	extern FILE* yyin;
+	
+    extern int yylineno;
+    extern char* yytext;
+    extern ast::Node* g_root;
+    extern FILE* yyin;
 
-	int yylex(void);
-	void yyerror(const char*);
-	int yylex_destroy(void);
+    int yylex(void);
+    void yyerror(const char*);
+    int yylex_destroy(void);
 }
 
 %define parse.error detailed
 %define parse.lac full
 
 %union {
-  Node*				    node;
-  NodeList*			  node_list;
-  int          		number_int;
-  double       		number_float;
-  std::string*		string;
-  TypeSpecifier 	type_specifier;
-  yytokentype  		token;
+    ast::Node* node;
+    ast::NodeList* node_list;
+    int number_int;
+    double number_float;
+    std::string* string;
+    ast::Context::Type type_specifier;
 }
 
 %token IDENTIFIER INT_CONSTANT FLOAT_CONSTANT STRING_LITERAL
@@ -52,167 +46,201 @@
 %type <string> IDENTIFIER
 %type <type_specifier> type_specifier declaration_specifiers
 
-
 %start ROOT
 %%
 
 ROOT
-	: translation_unit { g_root = $1; }
+    : translation_unit { g_root = $1; }
+    ;
 
 translation_unit
-	: external_declaration { $$ = $1; }
-	;
+    : external_declaration { $$ = $1; }
+    ;
 
 external_declaration
-	: function_definition { $$ = $1; }
-	;
+    : function_definition { $$ = $1; }
+    ;
 
 function_definition
-	: declaration_specifiers declarator compound_statement {
-		$$ = new FunctionDefinition($1, NodePtr($2), NodePtr($3));
-	}
-	;
+    : declaration_specifiers declarator compound_statement {
+        auto list = new ast::NodeList();
+        list->PushBack(std::unique_ptr<ast::Node>($3));
+        $$ = list;
+    }
+    ;
 
 declaration_specifiers
-	: type_specifier { $$ = $1; }
-	;
+    : type_specifier { $$ = $1; }
+    ;
 
 type_specifier
-	: INT {
-		$$ = TypeSpecifier::INT;
-	}
-	;
+    : INT {
+        $$ = ast::Context::Type::INT;
+    }
+    | VOID {
+        $$ = ast::Context::Type::VOID;
+    }
+    ;
 
 declarator
-	: direct_declarator { $$ = $1; }
-	;
+    : direct_declarator { $$ = $1; }
+    ;
 
 direct_declarator
-	: IDENTIFIER {
-		$$ = new Identifier(std::move(*$1));
-		delete $1;
-	}
-	| direct_declarator '(' ')' {
-		$$ = new DirectDeclarator(NodePtr($1));
-	}
-	;
+    : IDENTIFIER {
+        // Create a basic node for the identifier
+        $$ = new ast::NodeList(); // Placeholder - should be Identifier node
+        delete $1;
+    }
+    | direct_declarator '(' ')' {
+        // Function declarator - just pass through for now
+        $$ = $1;
+    }
+    ;
 
 statement
-	: jump_statement { $$ = $1; }
-	;
+    : compound_statement { $$ = $1; }
+    | jump_statement { $$ = $1; }
+    ;
 
 compound_statement
-	: '{' statement_list '}' { $$ = $2; }
-	;
+    : '{' '}' {
+        $$ = new ast::NodeList();
+    }
+    | '{' statement_list '}' { 
+        $$ = $2; 
+    }
+    ;
 
 statement_list
-	: statement { $$ = new NodeList(NodePtr($1)); }
-	| statement_list statement { $1->PushBack(NodePtr($2)); $$=$1; }
-	;
+    : statement { 
+        auto list = new ast::NodeList();
+        list->PushBack(std::unique_ptr<ast::Node>($1));
+        $$ = list;
+    }
+    | statement_list statement { 
+        $1->PushBack(std::unique_ptr<ast::Node>($2)); 
+        $$ = $1; 
+    }
+    ;
 
 jump_statement
-	: RETURN ';' {
-		$$ = new ReturnStatement(nullptr);
-	}
-	| RETURN expression ';' {
-		$$ = new ReturnStatement(NodePtr($2));
-	}
-	;
+    : RETURN ';' {
+        $$ = new ast::ReturnStatement(nullptr);
+    }
+    | RETURN expression ';' {
+        $$ = new ast::ReturnStatement(std::unique_ptr<ast::Node>($2));
+    }
+    | BREAK ';' {
+        $$ = new ast::BreakStatement();
+    }
+    | CONTINUE ';' {
+        $$ = new ast::ContinueStatement();
+    }
+    | GOTO IDENTIFIER ';' {
+        $$ = new ast::GotoStatement(*$2);
+        delete $2;
+    }
+    ;
 
 primary_expression
-	: INT_CONSTANT {
-		$$ = new IntConstant($1);
-	}
-	;
+    : IDENTIFIER {
+        // Placeholder - should create Identifier node
+        $$ = new ast::NodeList();
+        delete $1;
+    }
+    | INT_CONSTANT {
+        // Placeholder - should create IntConstant node
+        $$ = new ast::NodeList();
+    }
+    ;
 
 postfix_expression
-	: primary_expression
-	;
+    : primary_expression { $$ = $1; }
+    ;
 
 unary_expression
-	: postfix_expression
-	;
+    : postfix_expression { $$ = $1; }
+    ;
 
 cast_expression
-	: unary_expression
-	;
+    : unary_expression { $$ = $1; }
+    ;
 
 multiplicative_expression
-	: cast_expression
-	;
+    : cast_expression { $$ = $1; }
+    ;
 
 additive_expression
-	: multiplicative_expression
-	;
+    : multiplicative_expression { $$ = $1; }
+    ;
 
 shift_expression
-	: additive_expression
-	;
+    : additive_expression { $$ = $1; }
+    ;
 
 relational_expression
-	: shift_expression
-	;
+    : shift_expression { $$ = $1; }
+    ;
 
 equality_expression
-	: relational_expression
-	;
+    : relational_expression { $$ = $1; }
+    ;
 
 and_expression
-	: equality_expression
-	;
+    : equality_expression { $$ = $1; }
+    ;
 
 exclusive_or_expression
-	: and_expression
-	;
+    : and_expression { $$ = $1; }
+    ;
 
 inclusive_or_expression
-	: exclusive_or_expression
-	;
+    : exclusive_or_expression { $$ = $1; }
+    ;
 
 logical_and_expression
-	: inclusive_or_expression
-	;
+    : inclusive_or_expression { $$ = $1; }
+    ;
 
 logical_or_expression
-	: logical_and_expression
-	;
+    : logical_and_expression { $$ = $1; }
+    ;
 
 conditional_expression
-	: logical_or_expression
-	;
+    : logical_or_expression { $$ = $1; }
+    ;
 
 assignment_expression
-	: conditional_expression
-	;
+    : conditional_expression { $$ = $1; }
+    ;
 
 expression
-	: assignment_expression
-	;
+    : assignment_expression { $$ = $1; }
+    ;
 
 %%
 
-void yyerror (const char *s)
-{
-  std::cerr << "Error: " << s << " at line " << yylineno;
-  std::cerr << " near '" << yytext << "'" << std::endl;
-  std::exit(1);
+void yyerror(const char *s) {
+    std::cerr << "Error: " << s << " at line " << yylineno;
+    std::cerr << " near '" << yytext << "'" << std::endl;
+    std::exit(1);
 }
 
-Node* g_root;
+ast::Node* g_root = nullptr;
 
-NodePtr ParseAST(std::string file_name)
-{
-  yyin = fopen(file_name.c_str(), "r");
-  if (yyin == nullptr) {
-    std::cerr << "Couldn't open input file: " << file_name << std::endl;
-    std::exit(1);
-  }
+std::unique_ptr<ast::Node> ParseAST(std::string file_name) {
+    yyin = fopen(file_name.c_str(), "r");
+    if (yyin == nullptr) {
+        std::cerr << "Couldn't open input file: " << file_name << std::endl;
+        std::exit(1);
+    }
 
-  g_root = nullptr;
-  yyparse();
+    g_root = nullptr;
+    yyparse();
 
-  fclose(yyin);
-  yylex_destroy();
+    fclose(yyin);
+    yylex_destroy();
 
-  return NodePtr(g_root);
+    return std::unique_ptr<ast::Node>(g_root);
 }
