@@ -17,11 +17,11 @@
 %define parse.lac full
 
 %union {
-    Node*                 node;
-    NodeList*             node_list;
+    Node* node;
+    NodeList* node_list;
     int                   number_int;
     double                number_float;
-    std::string*          string;
+    std::string* string;
     TypeSpecifier         type_specifier;
     yytokentype           token;
 }
@@ -41,12 +41,10 @@
 %type <node> equality_expression and_expression exclusive_or_expression inclusive_or_expression logical_and_expression logical_or_expression
 %type <node> conditional_expression assignment_expression expression declarator direct_declarator statement compound_statement jump_statement
 %type <node> selection_statement labeled_statement constant_expression
-%type <node> declaration init_declarator_list init_declarator
+%type <node> declaration init_declarator
+%type <node> initializer
 
-
-%type <initializer> initializer
-
-%type <node_list> statement_list
+%type <node_list> statement_list init_declarator_list
 
 %type <number_int> INT_CONSTANT STRING_LITERAL
 %type <number_float> FLOAT_CONSTANT
@@ -59,6 +57,7 @@
 
 ROOT
 	: translation_unit { g_root = $1; }
+	;
 
 translation_unit
 	: external_declaration { $$ = $1; }
@@ -113,7 +112,10 @@ compound_statement
 
 statement_list
 	: statement { $$ = new NodeList(NodePtr($1)); }
-	| statement_list statement { $1->PushBack(NodePtr($2)); $$=$1; }
+	| statement_list statement {
+        $1->PushBack(NodePtr($2));
+        $$ = $1;
+    }
 	;
 
 jump_statement
@@ -148,7 +150,7 @@ labeled_statement
 
 declaration
     : declaration_specifiers init_declarator_list ';' {
-        $$ = new Declaration($2);
+        $$ = new Declaration(NodePtr($2));
     }
     ;
 
@@ -164,12 +166,6 @@ init_declarator
 initializer
     : assignment_expression {
         $$ = $1;
-    }
-    ;
-
-declaration
-    : declaration_specifiers init_declarator_list ';' {
-        $$ = new Declaration(NodePtr($2));
     }
     ;
 
@@ -217,6 +213,7 @@ additive_expression
         $$ = new BinaryOp(NodePtr($1), NodePtr($3), "+");
     }
     ;
+
 shift_expression
 	: additive_expression
 	;
@@ -276,7 +273,6 @@ void yyerror (const char *s)
 }
 
 Node* g_root;
-
 NodePtr ParseAST(std::string file_name)
 {
   yyin = fopen(file_name.c_str(), "r");
