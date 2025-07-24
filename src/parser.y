@@ -1,8 +1,5 @@
+// parser.y
 // Adapted from: https://www.lysator.liu.se/c/ANSI-C-grammar-y.html
-
-// TODO: you can either continue adding to this grammar file or
-// rename parser_full.y to parser.y once you're happy with
-// how this example works.
 
 %code requires {
 	#include "ast.hpp"
@@ -44,8 +41,9 @@
 %type <node> unary_expression cast_expression multiplicative_expression additive_expression shift_expression relational_expression
 %type <node> equality_expression and_expression exclusive_or_expression inclusive_or_expression logical_and_expression logical_or_expression
 %type <node> conditional_expression assignment_expression expression declarator direct_declarator statement compound_statement jump_statement
+%type <node> declaration init_declarator
 
-%type <node_list> statement_list
+%type <node_list> statement_list init_declarator_list parameter_list
 
 %type <number_int> INT_CONSTANT STRING_LITERAL
 %type <number_float> FLOAT_CONSTANT
@@ -58,30 +56,49 @@
 
 ROOT
 	: translation_unit { g_root = $1; }
+	;
 
 translation_unit
-	: external_declaration { $$ = $1; }
+	: external_declaration { $$ = new NodeList(NodePtr($1)); }
+    | translation_unit external_declaration { dynamic_cast<NodeList*>($1)->PushBack(NodePtr($2)); $$ = $1; }
 	;
 
 external_declaration
 	: function_definition { $$ = $1; }
+    | declaration         { $$ = $1; }
 	;
 
 function_definition
 	: declaration_specifiers declarator compound_statement {
-		$$ = new FunctionDefinition($1, NodePtr($2), NodePtr($3));
+        auto dd = dynamic_cast<DirectDeclarator*>($2);
+        auto params = dd ? dd->TakeParameters() : nullptr;
+		$$ = new FunctionDefinition($1, NodePtr($2), std::move(params), NodePtr($3));
 	}
 	;
+
+declaration
+    : declaration_specifiers init_declarator_list ';' {
+        $$ = new Declaration(NodePtr($2));
+    }
+    ;
 
 declaration_specifiers
 	: type_specifier { $$ = $1; }
 	;
 
 type_specifier
-	: INT {
-		$$ = TypeSpecifier::INT;
-	}
+	: INT { $$ = TypeSpecifier::INT; }
 	;
+
+init_declarator_list
+    : init_declarator { $$ = new NodeList(NodePtr($1)); }
+    | init_declarator_list ',' init_declarator { $1->PushBack(NodePtr($3)); $$ = $1; }
+    ;
+
+init_declarator
+    : declarator { $$ = new InitDeclarator(NodePtr($1), nullptr); }
+    | declarator '=' assignment_expression { $$ = new InitDeclarator(NodePtr($1), NodePtr($3)); }
+    ;
 
 declarator
 	: direct_declarator { $$ = $1; }
@@ -89,20 +106,34 @@ declarator
 
 direct_declarator
 	: IDENTIFIER {
-		$$ = new Identifier(std::move(*$1));
+		$$ = new DirectDeclarator(NodePtr(new Identifier(std::move(*$1))));
 		delete $1;
 	}
+    | '(' declarator ')' { $$ = $2; }
 	| direct_declarator '(' ')' {
-		$$ = new DirectDeclarator(NodePtr($1));
+        $$ = $1; // No parameters
 	}
+    | direct_declarator '(' parameter_list ')' {
+        dynamic_cast<DirectDeclarator*>($1)->SetParameters(NodePtr($3));
+        $$ = $1;
+    }
 	;
 
+parameter_list
+    : declaration { $$ = new NodeList(NodePtr($1)); } // Simplified parameter declaration
+    | parameter_list ',' declaration { $1->PushBack(NodePtr($3)); $$ = $1; }
+    ;
+
 statement
-	: jump_statement { $$ = $1; }
+    : compound_statement { $$ = $1; }
+	| expression ';'     { $$ = $1; }
+    | jump_statement     { $$ = $1; }
+    | declaration        { $$ = $1; }
 	;
 
 compound_statement
-	: '{' statement_list '}' { $$ = $2; }
+	: '{' '}' { $$ = new CompoundStatement(nullptr); }
+    | '{' statement_list '}' { $$ = new CompoundStatement(NodePtr($2)); }
 	;
 
 statement_list
@@ -111,84 +142,81 @@ statement_list
 	;
 
 jump_statement
-	: RETURN ';' {
-		$$ = new ReturnStatement(nullptr);
-	}
-	| RETURN expression ';' {
-		$$ = new ReturnStatement(NodePtr($2));
-	}
+	: RETURN ';' { $$ = new ReturnStatement(nullptr); }
+	| RETURN expression ';' { $$ = new ReturnStatement(NodePtr($2)); }
 	;
 
 primary_expression
-	: INT_CONSTANT {
-		$$ = new IntConstant($1);
-	}
+	: IDENTIFIER { $$ = new Identifier(std::move(*$1)); delete $1; }
+    | INT_CONSTANT { $$ = new IntConstant($1); }
+    | '(' expression ')' { $$ = $2; }
 	;
 
 postfix_expression
-	: primary_expression
+	: primary_expression { $$ = $1; }
 	;
 
 unary_expression
-	: postfix_expression
+	: postfix_expression { $$ = $1; }
 	;
 
 cast_expression
-	: unary_expression
+	: unary_expression { $$ = $1; }
 	;
 
 multiplicative_expression
-	: cast_expression
+	: cast_expression { $$ = $1; }
 	;
 
 additive_expression
-	: multiplicative_expression
+	: multiplicative_expression { $$ = $1; }
+    | additive_expression '+' multiplicative_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "+"); }
 	;
 
 shift_expression
-	: additive_expression
+	: additive_expression { $$ = $1; }
 	;
 
 relational_expression
-	: shift_expression
+	: shift_expression { $$ = $1; }
 	;
 
 equality_expression
-	: relational_expression
+	: relational_expression { $$ = $1; }
 	;
 
 and_expression
-	: equality_expression
+	: equality_expression { $$ = $1; }
 	;
 
 exclusive_or_expression
-	: and_expression
+	: and_expression { $$ = $1; }
 	;
 
 inclusive_or_expression
-	: exclusive_or_expression
+	: exclusive_or_expression { $$ = $1; }
 	;
 
 logical_and_expression
-	: inclusive_or_expression
+	: inclusive_or_expression { $$ = $1; }
 	;
 
 logical_or_expression
-	: logical_and_expression
+	: logical_and_expression { $$ = $1; }
 	;
 
 conditional_expression
-	: logical_or_expression
+	: logical_or_expression { $$ = $1; }
 	;
 
 assignment_expression
-	: conditional_expression
+	: conditional_expression { $$ = $1; }
+    | unary_expression '=' assignment_expression { $$ = new Assign(NodePtr($1), NodePtr($3)); }
 	;
 
 expression
-	: assignment_expression
+	: assignment_expression { $$ = $1; }
 	;
-
 %%
 
 void yyerror (const char *s)
@@ -199,7 +227,6 @@ void yyerror (const char *s)
 }
 
 Node* g_root;
-
 NodePtr ParseAST(std::string file_name)
 {
   yyin = fopen(file_name.c_str(), "r");

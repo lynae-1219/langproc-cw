@@ -13,7 +13,7 @@ public:
     void EmitRISC(std::ostream& stream, Context& context) const override;
     void Print(std::ostream& stream) const override;
 
-    // Add this getter function
+   
     const Node* GetDeclarator() const { return init_declarator_list_.get(); }
 };
 

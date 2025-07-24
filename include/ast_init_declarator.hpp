@@ -1,3 +1,4 @@
+
 #pragma once
 #include "ast_node.hpp"
 
@@ -13,6 +14,9 @@ public:
     
     void EmitRISC(std::ostream& stream, Context& context) const override;
     void Print(std::ostream& stream) const override;
+
+    // Add this public getter
+    const Node* GetDeclarator() const { return declarator_.get(); }
 };
 
 } // namespace ast

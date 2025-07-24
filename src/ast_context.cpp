@@ -1,3 +1,4 @@
+
 #include "ast_context.hpp"
 #include <stdexcept>
 
@@ -7,19 +8,19 @@ Context::Context() { PushScope(); }
 
 void Context::PushScope() {
     scopes_.push_back({});
+    scope_offsets_.push_back(current_stack_offset_);
 }
 
 void Context::PopScope() {
     scopes_.pop_back();
-    // Note: A more robust implementation would restore the previous stack offset
+    current_stack_offset_ = scope_offsets_.back();
+    scope_offsets_.pop_back();
 }
 
 void Context::AddVariable(const std::string& name, Type type, int size) {
-    // Variables are allocated from the top of the frame downwards
     current_stack_offset_ += size;
-    scopes_.back()[name] = {type, -current_stack_offset_, size}; // Use negative offsets from Frame Pointer
+    scopes_.back()[name] = {type, -current_stack_offset_, size};
 
-    // Update max stack size if we've gone deeper
     if (current_stack_offset_ > max_stack_offset_) {
         max_stack_offset_ = current_stack_offset_;
     }
@@ -31,25 +32,21 @@ int Context::GetVariableOffset(const std::string& name) const {
             return it->at(name).stack_offset;
         }
     }
-    return 0; // Return 0 or throw error if not found
+    throw std::runtime_error("Variable not found: " + name);
 }
 
 int Context::GetMaxStackSize() const {
     // Ensure stack size is aligned to 16 bytes for RISC-V
-    return (max_stack_offset_ + 15) & ~15;
+    int aligned_size = (max_stack_offset_ + 15) & ~15;
+    return aligned_size == 0 ? 16 : aligned_size;
 }
 
-std::string Context::AllocRegister() {
-    if (free_registers_.empty()) {
-        throw std::runtime_error("No free registers available");
-    }
-    auto reg = *free_registers_.begin();
-    free_registers_.erase(free_registers_.begin());
-    return reg;
+void Context::SetEpilogueLabel(const std::string& label) {
+    current_function_epilogue_label = label;
 }
 
-void Context::FreeRegister(const std::string& reg) {
-    free_registers_.insert(reg);
+const std::string& Context::GetEpilogueLabel() const {
+    return current_function_epilogue_label;
 }
 
 } // namespace ast

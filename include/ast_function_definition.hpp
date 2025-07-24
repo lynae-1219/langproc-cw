@@ -8,7 +8,7 @@ class FunctionDefinition : public Node {
 private:
     const TypeSpecifier declaration_specifiers_;
     NodePtr declarator_;
-    NodePtr parameters_; // Added
+    NodePtr parameters_; 
     NodePtr compound_statement_;
 
 public:

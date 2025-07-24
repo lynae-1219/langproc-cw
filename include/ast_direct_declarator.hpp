@@ -8,7 +8,7 @@ class DirectDeclarator : public Node
 {
 private:
     NodePtr identifier_;
-    NodePtr parameters_; // To hold the parameter list
+    NodePtr parameters_; 
 
 public:
     DirectDeclarator(NodePtr identifier) : identifier_(std::move(identifier)), parameters_(nullptr) {};

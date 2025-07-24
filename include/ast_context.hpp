@@ -1,3 +1,4 @@
+// ast_context.hpp
 #pragma once
 #include <string>
 #include <map>
@@ -9,7 +10,7 @@ namespace ast {
 
 class Context {
 public:
-    enum class Type { INT, FLOAT, CHAR }; // Basic types for now
+    enum class Type { INT, FLOAT, CHAR }; 
     
     struct Variable {
         Type type;
@@ -19,9 +20,10 @@ public:
 
 private:
     std::vector<std::map<std::string, Variable>> scopes_;
+    std::vector<int> scope_offsets_; 
     int current_stack_offset_ = 0;
-    int max_stack_offset_ = 0; // Tracks the maximum stack depth reached
-    std::set<std::string> free_registers_ = {"t0", "t1", "t2", "a0", "a1"}; // Note: a0, a1 are often for args/return
+    int max_stack_offset_ = 0; 
+    std::string current_function_epilogue_label;
 
 public:
     Context();
@@ -30,10 +32,10 @@ public:
     void PopScope();
     void AddVariable(const std::string& name, Type type, int size = 4);
     int GetVariableOffset(const std::string& name) const;
-    int GetMaxStackSize() const; // New getter
+    int GetMaxStackSize() const;
     
-    std::string AllocRegister();
-    void FreeRegister(const std::string& reg);
+    void SetEpilogueLabel(const std::string& label);
+    const std::string& GetEpilogueLabel() const;
 };
 
 } // namespace ast
