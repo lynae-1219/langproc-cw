@@ -9,15 +9,16 @@ InitDeclarator::InitDeclarator(NodePtr declarator, NodePtr initializer)
 
 void InitDeclarator::EmitRISC(std::ostream& stream, Context& context) const {
     if (auto id = dynamic_cast<Identifier*>(declarator_.get())) {
-        context.AddVariable(id->GetName(), Context::Type::INT, 4);
+        // Add the variable to the context first
+        context.AddVariable(id->GetName(), Context::Type::INT);
         int offset = context.GetVariableOffset(id->GetName());
         
+        // If there's an initializer, evaluate it and store the result
         if (initializer_) {
-            initializer_->EmitRISC(stream, context);
-            stream << "sw a0, " << offset << "(sp)\n";
-        } else {
-            stream << "sw zero, " << offset << "(sp)\n";
+            initializer_->EmitRISC(stream, context); // Result of RHS is in a0
+            stream << "  sw a0, " << offset << "(sp)" << std::endl;
         }
+        // If no initializer, it's just allocated space (no need to store zero)
     }
 }
 

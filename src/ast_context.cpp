@@ -7,24 +7,22 @@ Context::Context() { PushScope(); }
 
 void Context::PushScope() {
     scopes_.push_back({});
-    scope_depth_++;
 }
 
 void Context::PopScope() {
-    if (scope_depth_ > 1) {
-        int scope_size = 0;
-        for (const auto& [name, var] : scopes_.back()) {
-            scope_size += var.size;
-        }
-        stack_offset_ -= scope_size;
-        scopes_.pop_back();
-        scope_depth_--;
-    }
+    scopes_.pop_back();
+    // Note: A more robust implementation would restore the previous stack offset
 }
 
 void Context::AddVariable(const std::string& name, Type type, int size) {
-    scopes_.back()[name] = {type, stack_offset_, size};
-    stack_offset_ += size;
+    // Variables are allocated from the top of the frame downwards
+    current_stack_offset_ += size;
+    scopes_.back()[name] = {type, -current_stack_offset_, size}; // Use negative offsets from Frame Pointer
+
+    // Update max stack size if we've gone deeper
+    if (current_stack_offset_ > max_stack_offset_) {
+        max_stack_offset_ = current_stack_offset_;
+    }
 }
 
 int Context::GetVariableOffset(const std::string& name) const {
@@ -33,11 +31,12 @@ int Context::GetVariableOffset(const std::string& name) const {
             return it->at(name).stack_offset;
         }
     }
-    return -1;
+    return 0; // Return 0 or throw error if not found
 }
 
-int Context::GetCurrentStackSize() const {
-    return stack_offset_;
+int Context::GetMaxStackSize() const {
+    // Ensure stack size is aligned to 16 bytes for RISC-V
+    return (max_stack_offset_ + 15) & ~15;
 }
 
 std::string Context::AllocRegister() {

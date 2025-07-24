@@ -3,18 +3,15 @@
 
 namespace ast {
 
-class Declaration : public Node {
+class CompoundStatement : public Node {
 private:
-    NodePtr init_declarator_list_;
+    NodePtr statement_list_;
 
 public:
-    Declaration(NodePtr init_declarator_list);
+    CompoundStatement(NodePtr statement_list) : statement_list_(std::move(statement_list)) {}
     
     void EmitRISC(std::ostream& stream, Context& context) const override;
     void Print(std::ostream& stream) const override;
-
-    // Add this getter function
-    const Node* GetDeclarator() const { return init_declarator_list_.get(); }
 };
 
 } // namespace ast

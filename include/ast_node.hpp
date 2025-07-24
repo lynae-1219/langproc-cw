@@ -20,9 +20,12 @@ public:
     NodeList() = default;
     explicit NodeList(NodePtr first_node) { nodes_.push_back(std::move(first_node)); }
 
-    void PushBack(NodePtr item);  // Defined in your .cpp
-    void EmitRISC(std::ostream& stream, Context& context) const override;  // Defined in your .cpp
-    void Print(std::ostream& stream) const override;  // Defined in your .cpp
+    void PushBack(NodePtr item);
+    void EmitRISC(std::ostream& stream, Context& context) const override;
+    void Print(std::ostream& stream) const override;
+
+    // Add this getter function
+    const std::vector<NodePtr>& GetNodes() const { return nodes_; }
 
 private:
     std::vector<NodePtr> nodes_;

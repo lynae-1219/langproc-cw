@@ -6,10 +6,9 @@ Identifier::Identifier(std::string identifier)
     : identifier_(std::move(identifier)) {}
 
 void Identifier::EmitRISC(std::ostream& stream, Context& context) const {
+    // When an identifier is used in an expression, load its value from the stack.
     int offset = context.GetVariableOffset(identifier_);
-    if (offset >= 0) {
-        stream << "lw a0, " << offset << "(sp)\n";
-    }
+    stream << "  lw a0, " << offset << "(sp)" << std::endl;
 }
 
 void Identifier::Print(std::ostream& stream) const {
