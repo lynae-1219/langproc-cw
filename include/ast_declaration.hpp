@@ -3,18 +3,15 @@
 
 namespace ast {
 
-class Identifier : public Node {
+class Declaration : public Node {
 private:
-    std::string identifier_;
+    NodePtr init_declarator_list_;
 
 public:
-    Identifier(std::string identifier);
+    Declaration(NodePtr init_declarator_list);
     
     void EmitRISC(std::ostream& stream, Context& context) const override;
     void Print(std::ostream& stream) const override;
-    
-    // Add this method
-    const std::string& GetName() const { return identifier_; }
 };
 
 } // namespace ast

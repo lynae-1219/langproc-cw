@@ -70,6 +70,7 @@ L?'(\\.|[^\\'])+'	{yylval.number_int = (int)strtol(yytext, NULL, 0); return(INT_
 
 L?\"(\\.|[^\\"])*\"	{/* TODO process string literal */; return(STRING_LITERAL);}
 
+"="       { return ASSIGN; }
 "..."      {return(ELLIPSIS);}
 ">>="			 {return(RIGHT_ASSIGN);}
 "<<="      {return(LEFT_ASSIGN);}
@@ -116,6 +117,7 @@ L?\"(\\.|[^\\"])*\"	{/* TODO process string literal */; return(STRING_LITERAL);}
 "^"			   {return('^');}
 "|"			   {return('|');}
 "?"			   {return('?');}
+
 
 [ \a\b\t\v\f\n\r]		{/* ignore new lines and special sequences */}
 .			              {std::cerr << "Unknown token: " << yytext << std::endl; return(UNKNOWN);}
