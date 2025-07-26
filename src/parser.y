@@ -41,7 +41,7 @@
 %type <node> unary_expression cast_expression multiplicative_expression additive_expression shift_expression relational_expression
 %type <node> equality_expression and_expression exclusive_or_expression inclusive_or_expression logical_and_expression logical_or_expression
 %type <node> conditional_expression assignment_expression expression declarator direct_declarator statement compound_statement jump_statement
-%type <node> declaration init_declarator
+%type <node> declaration init_declarator parameter_declaration
 
 %type <node_list> statement_list init_declarator_list parameter_list
 
@@ -120,8 +120,18 @@ direct_declarator
 	;
 
 parameter_list
-    : declaration { $$ = new NodeList(NodePtr($1)); } // Simplified parameter declaration
-    | parameter_list ',' declaration { $1->PushBack(NodePtr($3)); $$ = $1; }
+    : parameter_declaration { $$ = new NodeList(NodePtr($1)); }
+    | parameter_list ',' parameter_declaration { $1->PushBack(NodePtr($3)); $$ = $1; }
+    ;
+
+// A parameter declaration is a declaration without the trailing semicolon.
+parameter_declaration
+    : declaration_specifiers declarator {
+        // Build the AST for a declaration manually here.
+        NodePtr init_decl = NodePtr(new InitDeclarator(NodePtr($2), nullptr));
+        auto init_list = new NodeList(std::move(init_decl));
+        $$ = new Declaration(NodePtr(init_list));
+    }
     ;
 
 statement
