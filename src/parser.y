@@ -124,7 +124,6 @@ parameter_list
     | parameter_list ',' parameter_declaration { $1->PushBack(NodePtr($3)); $$ = $1; }
     ;
 
-// A parameter declaration is a declaration without the trailing semicolon.
 parameter_declaration
     : declaration_specifiers declarator {
         // Build the AST for a declaration manually here.
