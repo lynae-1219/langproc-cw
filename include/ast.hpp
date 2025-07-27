@@ -1,4 +1,3 @@
-// ast.hpp
 #pragma once
 #include <iostream>
 #include <string>
@@ -16,6 +15,7 @@
 #include "ast_type_specifier.hpp"
 #include "ast_assign.hpp"
 #include "ast_compound_statement.hpp"
-#include "ast_binary_op.hpp" 
+#include "ast_binary_op.hpp"
+#include "ast_logical_op.hpp"
 
 ast::NodePtr ParseAST(std::string file_name);

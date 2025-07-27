@@ -1,4 +1,3 @@
-// parser.y
 // Adapted from: https://www.lysator.liu.se/c/ANSI-C-grammar-y.html
 
 %code requires {
@@ -124,6 +123,7 @@ parameter_list
     | parameter_list ',' parameter_declaration { $1->PushBack(NodePtr($3)); $$ = $1; }
     ;
 
+// A parameter declaration is a declaration without the trailing semicolon.
 parameter_declaration
     : declaration_specifiers declarator {
         // Build the AST for a declaration manually here.
@@ -175,43 +175,64 @@ cast_expression
 
 multiplicative_expression
 	: cast_expression { $$ = $1; }
+	| multiplicative_expression '*' cast_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "*"); }
+	| multiplicative_expression '/' cast_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "/"); }
+	| multiplicative_expression '%' cast_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "%"); }
 	;
 
 additive_expression
 	: multiplicative_expression { $$ = $1; }
     | additive_expression '+' multiplicative_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "+"); }
+	| additive_expression '-' multiplicative_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "-"); }
 	;
 
 shift_expression
 	: additive_expression { $$ = $1; }
+	| shift_expression LEFT_OP additive_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "<<"); }
+	| shift_expression RIGHT_OP additive_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), ">>"); }
 	;
 
 relational_expression
 	: shift_expression { $$ = $1; }
+	// AMENDED: Added relational operators
+	| relational_expression '<' shift_expression  { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "<"); }
+	| relational_expression '>' shift_expression  { $$ = new BinaryOp(NodePtr($1), NodePtr($3), ">"); }
+	| relational_expression LE_OP shift_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "<="); }
+	| relational_expression GE_OP shift_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), ">="); }
 	;
 
 equality_expression
 	: relational_expression { $$ = $1; }
+	// AMENDED: Added equality operators
+	| equality_expression EQ_OP relational_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "=="); }
+	| equality_expression NE_OP relational_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "!="); }
 	;
 
 and_expression
 	: equality_expression { $$ = $1; }
+	| and_expression '&' equality_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "&"); }
 	;
 
 exclusive_or_expression
 	: and_expression { $$ = $1; }
+	| exclusive_or_expression '^' and_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "^"); }
 	;
 
 inclusive_or_expression
 	: exclusive_or_expression { $$ = $1; }
+	| inclusive_or_expression '|' exclusive_or_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "|"); }
 	;
 
 logical_and_expression
 	: inclusive_or_expression { $$ = $1; }
+	// AMENDED: Use the new LogicalOp node for short-circuiting
+	| logical_and_expression AND_OP inclusive_or_expression { $$ = new LogicalOp(NodePtr($1), NodePtr($3), "&&"); }
 	;
 
 logical_or_expression
 	: logical_and_expression { $$ = $1; }
+	// AMENDED: Use the new LogicalOp node for short-circuiting
+	| logical_or_expression OR_OP logical_and_expression { $$ = new LogicalOp(NodePtr($1), NodePtr($3), "||"); }
 	;
 
 conditional_expression
