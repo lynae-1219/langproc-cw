@@ -3,6 +3,7 @@
 
 namespace ast {
 
+// CRITICAL FIX: The context must be initialized with a global scope.
 Context::Context() { PushScope(); }
 
 void Context::PushScope() {
@@ -11,15 +12,21 @@ void Context::PushScope() {
 }
 
 void Context::PopScope() {
+    if (scopes_.empty() || scope_offsets_.empty()) {
+        throw std::runtime_error("Attempted to pop from empty scope.");
+    }
     scopes_.pop_back();
     current_stack_offset_ = scope_offsets_.back();
     scope_offsets_.pop_back();
 }
 
 void Context::AddVariable(const std::string& name, Type type, int size) {
-    // Doubles are 8 bytes, others default to 4
-    int var_size = (type == Type::DOUBLE) ? 8 : size;
+    if (scopes_.empty()) {
+        throw std::runtime_error("No scope available to add variable.");
+    }
+    int var_size = (type == Context::Type::DOUBLE) ? 8 : size;
     current_stack_offset_ += var_size;
+    
     scopes_.back()[name] = {type, -current_stack_offset_, var_size};
 
     if (current_stack_offset_ > max_stack_offset_) {

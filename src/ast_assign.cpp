@@ -5,13 +5,23 @@
 namespace ast {
 
 void Assign::EmitRISC(std::ostream& stream, Context& context) const {
-    // Evaluate the right-hand side, the result will be in a0
     rhs_->EmitRISC(stream, context);
     
-    // Get the memory location of the left-hand side and store the result
-    auto id = dynamic_cast<Identifier*>(lhs_.get());
-    int offset = context.GetVariableOffset(id->GetName());
-    stream << "  sw a0, " << offset << "(sp)" << std::endl;
+    auto id = dynamic_cast<const Identifier*>(lhs_.get());
+    if (!id) {
+        throw std::runtime_error("LHS of assignment is not an identifier.");
+    }
+    const std::string& var_name = id->GetName();
+    int offset = context.GetVariableOffset(var_name);
+    Context::Type type = context.GetVariableType(var_name);
+
+    if (type == Context::Type::INT) {
+        stream << "  sw a0, " << offset << "(s0)" << std::endl;
+    } else if (type == Context::Type::FLOAT) {
+        stream << "  fsw fa0, " << offset << "(s0)" << std::endl;
+    } else if (type == Context::Type::DOUBLE) {
+        stream << "  fsd fa0, " << offset << "(s0)" << std::endl;
+    }
 }
 
 void Assign::Print(std::ostream& stream) const {

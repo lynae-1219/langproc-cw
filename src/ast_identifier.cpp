@@ -9,15 +9,16 @@ Context::Type Identifier::GetType(Context& context) const {
     return context.GetVariableType(identifier_);
 }
 
-
 void Identifier::EmitRISC(std::ostream& stream, Context& context) const {
     int offset = context.GetVariableOffset(identifier_);
     Context::Type type = this->GetType(context);
 
     if (type == Context::Type::INT) {
-        stream << "  lw a0, " << offset << "(sp)" << std::endl;
+        stream << "  lw a0, " << offset << "(s0)" << std::endl;
     } else if (type == Context::Type::FLOAT) {
-        stream << "  flw fa0, " << offset << "(sp)" << std::endl;
+        stream << "  flw fa0, " << offset << "(s0)" << std::endl;
+    } else if (type == Context::Type::DOUBLE) {
+        stream << "  fld fa0, " << offset << "(s0)" << std::endl;
     }
 }
 

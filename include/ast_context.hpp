@@ -28,6 +28,9 @@ private:
     std::string current_function_epilogue_label;
     std::atomic<int> label_counter_ = 0;
 
+    // These members are now managed directly by FunctionDefinition
+    friend class FunctionDefinition;
+
 public:
     Context();
     

@@ -2,8 +2,8 @@
 
 %code requires {
     #include "ast.hpp"
-    // AMENDED: Added the missing include for IfStatement
     #include "ast_if_statement.hpp"
+    #include "ast_update_expression.hpp"
     using namespace ast;
 
     extern int yylineno;
@@ -176,8 +176,9 @@ postfix_expression
     : primary_expression { $$ = $1; }
     | postfix_expression '(' ')' { $$ = new FunctionCall(NodePtr($1), nullptr); }
     | postfix_expression '(' argument_expression_list ')' { $$ = new FunctionCall(NodePtr($1), NodePtr($3)); }
+    | postfix_expression INC_OP { $$ = new UpdateExpression(NodePtr($1), false,     false); }
+    | postfix_expression DEC_OP { $$ = new UpdateExpression(NodePtr($1), false,     true); }
     ;
-
 argument_expression_list
     : assignment_expression { $$ = new NodeList(NodePtr($1)); }
     | argument_expression_list ',' assignment_expression { $1->PushBack(NodePtr($3)); $$ = $1; }
@@ -185,6 +186,8 @@ argument_expression_list
 
 unary_expression
     : postfix_expression { $$ = $1; }
+    | INC_OP unary_expression { $$ = new UpdateExpression(NodePtr($2), true,      false); }
+    | DEC_OP unary_expression { $$ = new UpdateExpression(NodePtr($2), true,      true); }
     ;
 
 cast_expression
