@@ -8,10 +8,14 @@ class DirectDeclarator : public Node
 {
 private:
     NodePtr identifier_;
-    NodePtr parameters_; 
+    NodePtr parameters_;
 
 public:
     DirectDeclarator(NodePtr identifier) : identifier_(std::move(identifier)), parameters_(nullptr) {};
+
+    Context::Type GetType(Context& context) const override {
+        return identifier_->GetType(context);
+    }
 
     void EmitRISC(std::ostream& stream, Context& context) const override;
     void Print(std::ostream& stream) const override;

@@ -3,20 +3,19 @@
 
 namespace ast {
 
-class IntConstant : public Node
-{
+class FloatConstant : public Node {
 private:
-    int value_;
+    double value_;
 
 public:
-    IntConstant(int value) : value_(value) {}
+    FloatConstant(double value) : value_(value) {}
 
-    // ADDED: An IntConstant node always has the type INT.
+    // A FloatConstant node always has the type FLOAT.
     Context::Type GetType(Context& context) const override {
-        (void)context; // context is unused, but required by the signature
-        return Context::Type::INT;
+        (void)context; // context is unused
+        return Context::Type::FLOAT;
     }
-
+    
     void EmitRISC(std::ostream& stream, Context& context) const override;
     void Print(std::ostream& stream) const override;
 };

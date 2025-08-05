@@ -10,10 +10,12 @@ private:
 public:
     Identifier(std::string identifier);
     
+    // ADDED: GetType for an identifier looks up its type in the context.
+    Context::Type GetType(Context& context) const override;
+    
     void EmitRISC(std::ostream& stream, Context& context) const override;
     void Print(std::ostream& stream) const override;
     
-    // Add this method
     const std::string& GetName() const { return identifier_; }
 };
 

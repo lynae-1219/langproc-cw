@@ -1,30 +1,32 @@
 // Adapted from: https://www.lysator.liu.se/c/ANSI-C-grammar-y.html
 
 %code requires {
-	#include "ast.hpp"
-	using namespace ast;
+    #include "ast.hpp"
+    // AMENDED: Added the missing include for IfStatement
+    #include "ast_if_statement.hpp"
+    using namespace ast;
 
-	extern int yylineno;
-	extern char* yytext;
-	extern Node* g_root;
-	extern FILE* yyin;
+    extern int yylineno;
+    extern char* yytext;
+    extern Node* g_root;
+    extern FILE* yyin;
 
-	int yylex(void);
-	void yyerror(const char*);
-	int yylex_destroy(void);
+    int yylex(void);
+    void yyerror(const char*);
+    int yylex_destroy(void);
 }
 
 %define parse.error detailed
 %define parse.lac full
 
 %union {
-  Node*				    node;
-  NodeList*			  node_list;
-  int          		number_int;
-  double       		number_float;
-  std::string*		string;
-  TypeSpecifier 	type_specifier;
-  yytokentype  		token;
+  Node* node;
+  NodeList* node_list;
+  int               number_int;
+  double            number_float;
+  std::string* string;
+  TypeSpecifier     type_specifier;
+  yytokentype       token;
 }
 
 %token IDENTIFIER INT_CONSTANT FLOAT_CONSTANT STRING_LITERAL
@@ -37,57 +39,60 @@
 %token UNKNOWN
 
 %type <node> translation_unit external_declaration function_definition primary_expression postfix_expression
-%type <node> unary_expression cast_expression multiplicative_expression additive_expression shift_expression relational_expression
-%type <node> equality_expression and_expression exclusive_or_expression inclusive_or_expression logical_and_expression logical_or_expression
-%type <node> conditional_expression assignment_expression expression declarator direct_declarator statement compound_statement jump_statement
-%type <node> declaration init_declarator parameter_declaration
+%type <node> unary_expression cast_expression multiplicative_expression additive_expression shift_expression
+%type <node> relational_expression equality_expression and_expression exclusive_or_expression inclusive_or_expression
+%type <node> logical_and_expression logical_or_expression conditional_expression assignment_expression expression
+%type <node> declarator direct_declarator statement compound_statement jump_statement declaration
+%type <node> init_declarator parameter_declaration selection_statement
 
-%type <node_list> statement_list init_declarator_list parameter_list
+%type <node_list> statement_list init_declarator_list parameter_list argument_expression_list
 
+// AMENDED: Moved FLOAT_CONSTANT to the correct type to fix the constructor error.
 %type <number_int> INT_CONSTANT STRING_LITERAL
 %type <number_float> FLOAT_CONSTANT
 %type <string> IDENTIFIER
 %type <type_specifier> type_specifier declaration_specifiers
 
-
 %start ROOT
 %%
 
 ROOT
-	: translation_unit { g_root = $1; }
-	;
+    : translation_unit { g_root = $1; }
+    ;
 
 translation_unit
-	: external_declaration { $$ = new NodeList(NodePtr($1)); }
+    : external_declaration { $$ = new NodeList(NodePtr($1)); }
     | translation_unit external_declaration { dynamic_cast<NodeList*>($1)->PushBack(NodePtr($2)); $$ = $1; }
-	;
+    ;
 
 external_declaration
-	: function_definition { $$ = $1; }
+    : function_definition { $$ = $1; }
     | declaration         { $$ = $1; }
-	;
+    ;
 
 function_definition
-	: declaration_specifiers declarator compound_statement {
+    : declaration_specifiers declarator compound_statement {
         auto dd = dynamic_cast<DirectDeclarator*>($2);
         auto params = dd ? dd->TakeParameters() : nullptr;
-		$$ = new FunctionDefinition($1, NodePtr($2), std::move(params), NodePtr($3));
-	}
-	;
+        $$ = new FunctionDefinition($1, NodePtr($2), std::move(params), NodePtr($3));
+    }
+    ;
 
 declaration
     : declaration_specifiers init_declarator_list ';' {
-        $$ = new Declaration(NodePtr($2));
+        $$ = new Declaration($1, NodePtr($2));
     }
     ;
 
 declaration_specifiers
-	: type_specifier { $$ = $1; }
-	;
+    : type_specifier { $$ = $1; }
+    ;
 
 type_specifier
-	: INT { $$ = TypeSpecifier::INT; }
-	;
+    : INT { $$ = TypeSpecifier::INT; }
+    | FLOAT { $$ = TypeSpecifier::FLOAT; }
+    | DOUBLE { $$ = TypeSpecifier::DOUBLE; }
+    ;
 
 init_declarator_list
     : init_declarator { $$ = new NodeList(NodePtr($1)); }
@@ -100,153 +105,162 @@ init_declarator
     ;
 
 declarator
-	: direct_declarator { $$ = $1; }
-	;
+    : direct_declarator { $$ = $1; }
+    ;
 
 direct_declarator
-	: IDENTIFIER {
-		$$ = new DirectDeclarator(NodePtr(new Identifier(std::move(*$1))));
-		delete $1;
-	}
+    : IDENTIFIER {
+        $$ = new DirectDeclarator(NodePtr(new Identifier(std::move(*$1))));
+        delete $1;
+    }
     | '(' declarator ')' { $$ = $2; }
-	| direct_declarator '(' ')' {
-        $$ = $1; // No parameters
-	}
+    | direct_declarator '(' ')' {
+        $$ = $1;
+    }
     | direct_declarator '(' parameter_list ')' {
         dynamic_cast<DirectDeclarator*>($1)->SetParameters(NodePtr($3));
         $$ = $1;
     }
-	;
+    ;
 
 parameter_list
     : parameter_declaration { $$ = new NodeList(NodePtr($1)); }
     | parameter_list ',' parameter_declaration { $1->PushBack(NodePtr($3)); $$ = $1; }
     ;
 
-// A parameter declaration is a declaration without the trailing semicolon.
 parameter_declaration
     : declaration_specifiers declarator {
-        // Build the AST for a declaration manually here.
         NodePtr init_decl = NodePtr(new InitDeclarator(NodePtr($2), nullptr));
         auto init_list = new NodeList(std::move(init_decl));
-        $$ = new Declaration(NodePtr(init_list));
+        $$ = new Declaration($1, NodePtr(init_list));
     }
     ;
 
 statement
     : compound_statement { $$ = $1; }
-	| expression ';'     { $$ = $1; }
+    | expression ';'     { $$ = $1; }
     | jump_statement     { $$ = $1; }
     | declaration        { $$ = $1; }
-	;
+    | selection_statement { $$ = $1; }
+    | WHILE '(' expression ')' statement { $$ = new WhileStatement(NodePtr($3), NodePtr($5)); }
+    ;
+
+selection_statement
+    : IF '(' expression ')' statement { $$ = new IfStatement(NodePtr($3), NodePtr($5), nullptr); }
+    | IF '(' expression ')' statement ELSE statement { $$ = new IfStatement(NodePtr($3), NodePtr($5), NodePtr($7)); }
+    ;
 
 compound_statement
-	: '{' '}' { $$ = new CompoundStatement(nullptr); }
+    : '{' '}' { $$ = new CompoundStatement(nullptr); }
     | '{' statement_list '}' { $$ = new CompoundStatement(NodePtr($2)); }
-	;
+    ;
 
 statement_list
-	: statement { $$ = new NodeList(NodePtr($1)); }
-	| statement_list statement { $1->PushBack(NodePtr($2)); $$=$1; }
-	;
+    : statement { $$ = new NodeList(NodePtr($1)); }
+    | statement_list statement { $1->PushBack(NodePtr($2)); $$=$1; }
+    ;
 
 jump_statement
-	: RETURN ';' { $$ = new ReturnStatement(nullptr); }
-	| RETURN expression ';' { $$ = new ReturnStatement(NodePtr($2)); }
-	;
+    : RETURN ';' { $$ = new ReturnStatement(nullptr); }
+    | RETURN expression ';' { $$ = new ReturnStatement(NodePtr($2)); }
+    ;
 
 primary_expression
-	: IDENTIFIER { $$ = new Identifier(std::move(*$1)); delete $1; }
+    : IDENTIFIER { $$ = new Identifier(std::move(*$1)); delete $1; }
     | INT_CONSTANT { $$ = new IntConstant($1); }
+    | FLOAT_CONSTANT { $$ = new FloatConstant($1); }
     | '(' expression ')' { $$ = $2; }
-	;
+    ;
 
 postfix_expression
-	: primary_expression { $$ = $1; }
-	;
+    : primary_expression { $$ = $1; }
+    | postfix_expression '(' ')' { $$ = new FunctionCall(NodePtr($1), nullptr); }
+    | postfix_expression '(' argument_expression_list ')' { $$ = new FunctionCall(NodePtr($1), NodePtr($3)); }
+    ;
+
+argument_expression_list
+    : assignment_expression { $$ = new NodeList(NodePtr($1)); }
+    | argument_expression_list ',' assignment_expression { $1->PushBack(NodePtr($3)); $$ = $1; }
+    ;
 
 unary_expression
-	: postfix_expression { $$ = $1; }
-	;
+    : postfix_expression { $$ = $1; }
+    ;
 
 cast_expression
-	: unary_expression { $$ = $1; }
-	;
+    : unary_expression { $$ = $1; }
+    ;
 
 multiplicative_expression
-	: cast_expression { $$ = $1; }
-	| multiplicative_expression '*' cast_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "*"); }
-	| multiplicative_expression '/' cast_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "/"); }
-	| multiplicative_expression '%' cast_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "%"); }
-	;
+    : cast_expression { $$ = $1; }
+    | multiplicative_expression '*' cast_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "*"); }
+    | multiplicative_expression '/' cast_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "/"); }
+    | multiplicative_expression '%' cast_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "%"); }
+    ;
 
 additive_expression
-	: multiplicative_expression { $$ = $1; }
+    : multiplicative_expression { $$ = $1; }
     | additive_expression '+' multiplicative_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "+"); }
-	| additive_expression '-' multiplicative_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "-"); }
-	;
+    | additive_expression '-' multiplicative_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "-"); }
+    ;
 
 shift_expression
-	: additive_expression { $$ = $1; }
-	| shift_expression LEFT_OP additive_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "<<"); }
-	| shift_expression RIGHT_OP additive_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), ">>"); }
-	;
+    : additive_expression { $$ = $1; }
+    | shift_expression LEFT_OP additive_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "<<"); }
+    | shift_expression RIGHT_OP additive_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), ">>"); }
+    ;
 
 relational_expression
-	: shift_expression { $$ = $1; }
-	// AMENDED: Added relational operators
-	| relational_expression '<' shift_expression  { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "<"); }
-	| relational_expression '>' shift_expression  { $$ = new BinaryOp(NodePtr($1), NodePtr($3), ">"); }
-	| relational_expression LE_OP shift_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "<="); }
-	| relational_expression GE_OP shift_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), ">="); }
-	;
+    : shift_expression { $$ = $1; }
+    | relational_expression '<' shift_expression  { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "<"); }
+    | relational_expression '>' shift_expression  { $$ = new BinaryOp(NodePtr($1), NodePtr($3), ">"); }
+    | relational_expression LE_OP shift_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "<="); }
+    | relational_expression GE_OP shift_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), ">="); }
+    ;
 
 equality_expression
-	: relational_expression { $$ = $1; }
-	// AMENDED: Added equality operators
-	| equality_expression EQ_OP relational_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "=="); }
-	| equality_expression NE_OP relational_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "!="); }
-	;
+    : relational_expression { $$ = $1; }
+    | equality_expression EQ_OP relational_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "=="); }
+    | equality_expression NE_OP relational_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "!="); }
+    ;
 
 and_expression
-	: equality_expression { $$ = $1; }
-	| and_expression '&' equality_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "&"); }
-	;
+    : equality_expression { $$ = $1; }
+    | and_expression '&' equality_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "&"); }
+    ;
 
 exclusive_or_expression
-	: and_expression { $$ = $1; }
-	| exclusive_or_expression '^' and_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "^"); }
-	;
+    : and_expression { $$ = $1; }
+    | exclusive_or_expression '^' and_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "^"); }
+    ;
 
 inclusive_or_expression
-	: exclusive_or_expression { $$ = $1; }
-	| inclusive_or_expression '|' exclusive_or_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "|"); }
-	;
+    : exclusive_or_expression { $$ = $1; }
+    | inclusive_or_expression '|' exclusive_or_expression { $$ = new BinaryOp(NodePtr($1), NodePtr($3), "|"); }
+    ;
 
 logical_and_expression
-	: inclusive_or_expression { $$ = $1; }
-	// AMENDED: Use the new LogicalOp node for short-circuiting
-	| logical_and_expression AND_OP inclusive_or_expression { $$ = new LogicalOp(NodePtr($1), NodePtr($3), "&&"); }
-	;
+    : inclusive_or_expression { $$ = $1; }
+    | logical_and_expression AND_OP inclusive_or_expression { $$ = new LogicalOp(NodePtr($1), NodePtr($3), "&&"); }
+    ;
 
 logical_or_expression
-	: logical_and_expression { $$ = $1; }
-	// AMENDED: Use the new LogicalOp node for short-circuiting
-	| logical_or_expression OR_OP logical_and_expression { $$ = new LogicalOp(NodePtr($1), NodePtr($3), "||"); }
-	;
+    : logical_and_expression { $$ = $1; }
+    | logical_or_expression OR_OP logical_and_expression { $$ = new LogicalOp(NodePtr($1), NodePtr($3), "||"); }
+    ;
 
 conditional_expression
-	: logical_or_expression { $$ = $1; }
-	;
+    : logical_or_expression { $$ = $1; }
+    ;
 
 assignment_expression
-	: conditional_expression { $$ = $1; }
+    : conditional_expression { $$ = $1; }
     | unary_expression '=' assignment_expression { $$ = new Assign(NodePtr($1), NodePtr($3)); }
-	;
+    ;
 
 expression
-	: assignment_expression { $$ = $1; }
-	;
+    : assignment_expression { $$ = $1; }
+    ;
 %%
 
 void yyerror (const char *s)

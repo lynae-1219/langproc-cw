@@ -1,4 +1,3 @@
-
 #include "ast_context.hpp"
 #include <stdexcept>
 
@@ -18,8 +17,10 @@ void Context::PopScope() {
 }
 
 void Context::AddVariable(const std::string& name, Type type, int size) {
-    current_stack_offset_ += size;
-    scopes_.back()[name] = {type, -current_stack_offset_, size};
+    // Doubles are 8 bytes, others default to 4
+    int var_size = (type == Type::DOUBLE) ? 8 : size;
+    current_stack_offset_ += var_size;
+    scopes_.back()[name] = {type, -current_stack_offset_, var_size};
 
     if (current_stack_offset_ > max_stack_offset_) {
         max_stack_offset_ = current_stack_offset_;
@@ -35,8 +36,16 @@ int Context::GetVariableOffset(const std::string& name) const {
     throw std::runtime_error("Variable not found: " + name);
 }
 
+Context::Type Context::GetVariableType(const std::string& name) const {
+    for (auto it = scopes_.rbegin(); it != scopes_.rend(); ++it) {
+        if (it->count(name)) {
+            return it->at(name).type;
+        }
+    }
+    throw std::runtime_error("Variable type not found: " + name);
+}
+
 int Context::GetMaxStackSize() const {
-    // Ensure stack size is aligned to 16 bytes for RISC-V
     int aligned_size = (max_stack_offset_ + 15) & ~15;
     return aligned_size == 0 ? 16 : aligned_size;
 }
@@ -47,6 +56,10 @@ void Context::SetEpilogueLabel(const std::string& label) {
 
 const std::string& Context::GetEpilogueLabel() const {
     return current_function_epilogue_label;
+}
+
+int Context::GetUniqueLabelId() {
+    return label_counter_++;
 }
 
 } // namespace ast

@@ -4,7 +4,7 @@
 #include "ast_direct_declarator.hpp"
 #include "ast_declaration.hpp"
 #include "ast_init_declarator.hpp"
-#include "ast_node.hpp" // For NodeList
+#include "ast_node.hpp" 
 #include <stdexcept>
 #include <sstream>
 
@@ -28,22 +28,37 @@ void FunctionDefinition::EmitRISC(std::ostream& stream, Context& context) const 
     std::stringstream body_stream;
     context.PushScope(); 
 
-    // Handle parameters
-    std::vector<std::string> arg_registers = {"a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7"};
+    std::vector<std::string> int_arg_regs = {"a0", "a1", "a2", "a3", "a4", "a5", "a6", "a7"};
+    std::vector<std::string> float_arg_regs = {"fa0", "fa1", "fa2", "fa3", "fa4", "fa5", "fa6", "fa7"};
+    size_t int_arg_count = 0;
+    size_t float_arg_count = 0;
+
     if (parameters_) {
         if(auto param_list = dynamic_cast<const NodeList*>(parameters_.get())) {
-            int i = 0;
             for(const auto& param_node : param_list->GetNodes()) {
-                if (const auto* decl = dynamic_cast<const Declaration*>(param_node.get())) {
-                    const auto* init_list = dynamic_cast<const NodeList*>(decl->GetDeclarator());
-                    const auto* init_decl = dynamic_cast<const InitDeclarator*>(init_list->GetNodes()[0].get());
-                    const auto* dir_decl = dynamic_cast<const DirectDeclarator*>(init_decl->GetDeclarator());
-                    const auto* id = dynamic_cast<const Identifier*>(dir_decl->GetIdentifier());
+                const auto* decl = dynamic_cast<const Declaration*>(param_node.get());
+                const auto* init_list = dynamic_cast<const NodeList*>(decl->GetDeclarator());
+                const auto* init_decl = dynamic_cast<const InitDeclarator*>(init_list->GetNodes()[0].get());
+                
+                std::string param_name = init_decl->GetName();
+                Context::Type param_type = SpecifierToContextType(decl->GetTypeSpecifier());
+                
+                context.AddVariable(param_name, param_type);
+                int offset = context.GetVariableOffset(param_name);
 
-                    context.AddVariable(id->GetName(), Context::Type::INT);
-                    int offset = context.GetVariableOffset(id->GetName());
-                    body_stream << "  sw " << arg_registers[i] << ", " << offset << "(sp) # Store parameter " << id->GetName() << std::endl;
-                    i++;
+                if (param_type == Context::Type::INT) {
+                    if (int_arg_count < int_arg_regs.size()) {
+                        body_stream << "  sw " << int_arg_regs[int_arg_count++] << ", " << offset << "(sp)\n";
+                    }
+                } else if (param_type == Context::Type::FLOAT || param_type == Context::Type::DOUBLE) {
+                    if (float_arg_count < float_arg_regs.size()) {
+                        // Store float or double parameter from float registers
+                        if (param_type == Context::Type::FLOAT) {
+                           body_stream << "  fsw " << float_arg_regs[float_arg_count++] << ", " << offset << "(sp)\n";
+                        } else { // DOUBLE
+                           body_stream << "  fsd " << float_arg_regs[float_arg_count++] << ", " << offset << "(sp)\n";
+                        }
+                    }
                 }
             }
         }
@@ -56,10 +71,12 @@ void FunctionDefinition::EmitRISC(std::ostream& stream, Context& context) const 
     stream << ".globl " << func_name << std::endl;
     stream << func_name << ":" << std::endl;
     stream << "  addi sp, sp, -" << stack_size << std::endl;
+
     stream << "  sw ra, " << stack_size - 4 << "(sp)" << std::endl;
     stream << body_stream.str();
 
     stream << epilogue_label << ":" << std::endl;
+
     stream << "  lw ra, " << stack_size - 4 << "(sp)" << std::endl;
     stream << "  addi sp, sp, " << stack_size << std::endl;
     stream << "  ret" << std::endl;
@@ -80,7 +97,6 @@ std::string FunctionDefinition::GetFunctionName() const {
         if(auto* id = dynamic_cast<const Identifier*>(dd->GetIdentifier())) {
             return id->GetName();
         }
-        // This is a simplification; a more robust solution would trace through declarator types.
         break; 
     }
     throw std::runtime_error("Function name not found in declarator");
