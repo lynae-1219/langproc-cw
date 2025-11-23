@@ -2,7 +2,7 @@
 #include "ast_identifier.hpp"
 #include "ast_context.hpp"
 
-//i daresay better than reaver 1.0?
+//Better than Reaver?
 namespace ast {
 
 void UpdateExpression::EmitRISC(std::ostream& stream, Context& context) const {

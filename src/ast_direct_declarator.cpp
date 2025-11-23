@@ -2,15 +2,16 @@
 
 namespace ast {
 
-void DirectDeclarator::EmitRISC(std::ostream& stream, Context& context) const
-{
-    identifier_->EmitRISC(stream, context);
-    stream << ":" << std::endl;
+void DirectDeclarator::EmitRISC(std::ostream& stream, Context& context) const {
+    (void)stream;
+    (void)context;
 }
 
-void DirectDeclarator::Print(std::ostream& stream) const
-{
+void DirectDeclarator::Print(std::ostream& stream) const {
     identifier_->Print(stream);
+    if (array_size_ > 0) {
+        stream << "[" << array_size_ << "]";
+    }
 }
 
-} // namespace ast
+}

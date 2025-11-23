@@ -50,11 +50,12 @@ void FunctionDefinition::EmitRISC(std::ostream& stream, Context& context) const 
                 
                 std::string param_name = init_decl->GetName();
                 Context::Type param_type = SpecifierToContextType(decl->GetTypeSpecifier());
-                
-                context.AddVariable(param_name, param_type);
+                bool is_pointer = init_decl->IsPointer();
+
+                context.AddVariable(param_name, param_type, 4, 0, is_pointer);
                 int offset = context.GetVariableOffset(param_name);
 
-                if (param_type == Context::Type::INT) {
+                if (param_type == Context::Type::INT || param_type == Context::Type::CHAR) {
                     if (int_arg_count < int_arg_regs.size()) {
                         body_stream << "  sw " << int_arg_regs[int_arg_count++] << ", " << offset << "(s0)\n";
                     }

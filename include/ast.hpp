@@ -1,4 +1,3 @@
-// ast.hpp
 #pragma once
 #include <iostream>
 #include <string>
@@ -21,5 +20,16 @@
 #include "ast_logical_op.hpp"
 #include "ast_function_call.hpp"
 #include "ast_while_statement.hpp"
+#include "ast_for_statement.hpp"
+#include "ast_array_access.hpp"
+#include "ast_unary_expression.hpp"
+#include "ast_address_of.hpp"
+#include "ast_dereference.hpp"
+#include "ast_enum.hpp"
+#include "ast_typedef.hpp"
+#include "ast_compound_assign.hpp"
+#include "ast_sizeof.hpp"
+#include "ast_string_literal.hpp"
+#include "ast_struct.hpp"
 
 ast::NodePtr ParseAST(std::string file_name);

@@ -9,6 +9,10 @@
   extern "C" int fileno(FILE *stream);
 
   #include "parser.tab.hpp"
+  #include <set>
+  #include <string>
+
+  extern std::set<std::string> g_typedef_names;
 
   // Suppress warning about unused function
   [[maybe_unused]] static void yyunput (int c, char * yy_bp);
@@ -57,18 +61,39 @@ IS  (u|U|l|L)*
 "volatile"	{return(VOLATILE);}
 "while"			{return(WHILE);}
 
-{L}({L}|{D})*		{yylval.string = new std::string(yytext); return(IDENTIFIER);}
+{L}({L}|{D})*		{
+    yylval.string = new std::string(yytext);
+    if (g_typedef_names.count(yytext)) {
+        return(TYPEDEF_NAME);
+    }
+    return(IDENTIFIER);
+}
 
 0[xX]{H}+{IS}?		{yylval.number_int = (int)strtol(yytext, NULL, 0); return(INT_CONSTANT);}
 0{D}+{IS}?		    {yylval.number_int = (int)strtol(yytext, NULL, 0); return(INT_CONSTANT);}
 {D}+{IS}?		      {yylval.number_int = (int)strtol(yytext, NULL, 0); return(INT_CONSTANT);}
-L?'(\\.|[^\\'])+'	{yylval.number_int = (int)strtol(yytext, NULL, 0); return(INT_CONSTANT);}
+L?'(\\.|[^\\'])+'	{
+    if (yytext[1] == '\\') {
+        switch (yytext[2]) {
+            case 'n': yylval.number_int = '\n'; break;
+            case 't': yylval.number_int = '\t'; break;
+            case 'r': yylval.number_int = '\r'; break;
+            case '0': yylval.number_int = '\0'; break;
+            case '\\': yylval.number_int = '\\'; break;
+            case '\'': yylval.number_int = '\''; break;
+            default: yylval.number_int = yytext[2]; break;
+        }
+    } else {
+        yylval.number_int = yytext[1];
+    }
+    return(INT_CONSTANT);
+}
 
 {D}+{E}{FS}?		        {yylval.number_float = strtod(yytext, NULL); return(FLOAT_CONSTANT);}
 {D}*"."{D}+({E})?{FS}?	{yylval.number_float = strtod(yytext, NULL); return(FLOAT_CONSTANT);}
 {D}+"."{D}*({E})?{FS}?	{yylval.number_float = strtod(yytext, NULL); return(FLOAT_CONSTANT);}
 
-L?\"(\\.|[^\\"])*\"	{/* TODO process string literal */; return(STRING_LITERAL);}
+L?\"(\\.|[^\\"])*\"	{yylval.string = new std::string(yytext); return(STRING_LITERAL);}
 
 "..."      {return(ELLIPSIS);}
 ">>="			 {return(RIGHT_ASSIGN);}

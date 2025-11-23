@@ -9,7 +9,10 @@ enum class TypeSpecifier
 {
     INT,
     FLOAT,
-    DOUBLE
+    DOUBLE,
+    CHAR,
+    UNSIGNED,
+    VOID
 };
 template<typename LogStream>
 LogStream& operator<<(LogStream& ls, const TypeSpecifier& type)
@@ -23,6 +26,12 @@ LogStream& operator<<(LogStream& ls, const TypeSpecifier& type)
             return "float";
         case TypeSpecifier::DOUBLE:
             return "double";
+        case TypeSpecifier::CHAR:
+            return "char";
+        case TypeSpecifier::UNSIGNED:
+            return "unsigned";
+        case TypeSpecifier::VOID:
+            return "void";
         }
         throw std::runtime_error("Unexpected type specifier");
     };

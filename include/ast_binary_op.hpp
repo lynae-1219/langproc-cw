@@ -1,5 +1,6 @@
 #pragma once
 #include "ast_node.hpp"
+#include "ast_identifier.hpp"
 
 namespace ast {
 
@@ -23,7 +24,7 @@ public:
     void EmitRISC(std::ostream& stream, Context& context) const override {
         Context::Type operand_type = lhs_->GetType(context);
 
-        // --- Step 1: Evaluate LHS and push result to stack ---
+        // Evaluate LHS and push result to stack 
         lhs_->EmitRISC(stream, context);
         if (operand_type == Context::Type::DOUBLE) {
             stream << "  addi sp, sp, -8" << std::endl;
@@ -37,10 +38,15 @@ public:
             }
         }
 
-        // --- Step 2: Evaluate RHS, result is now in a0/fa0 ---
+        // Evaluate RHS, result is now in a0/fa0
         rhs_->EmitRISC(stream, context);
 
-        // --- Step 3: Pop LHS from stack into a temporary register ---
+        bool is_pointer_arith = lhs_->IsPointer(context) && (op_ == "+" || op_ == "-");
+        if (is_pointer_arith && operand_type != Context::Type::CHAR) {
+            stream << "  slli a0, a0, 2" << std::endl;
+        }
+
+        //Pop LHS from stack into a temporary register
         if (operand_type == Context::Type::DOUBLE) {
             stream << "  fld ft0, 0(sp)" << std::endl;
             stream << "  addi sp, sp, 8" << std::endl;
@@ -53,11 +59,11 @@ public:
             stream << "  addi sp, sp, 4" << std::endl;
         }
 
-        // --- Step 4: Perform the operation ---
+        // Perform Operations
         if (op_ == "+" || op_ == "-" || op_ == "*" || op_ == "/" || op_ == "%" ||
             op_ == "&" || op_ == "|" || op_ == "^" || op_ == "<<" || op_ == ">>")
         {
-            if (operand_type == Context::Type::INT) {
+            if (operand_type == Context::Type::INT || operand_type == Context::Type::CHAR) {
                 if (op_ == "+") { stream << "  add a0, t0, a0" << std::endl; }
                 else if (op_ == "-") { stream << "  sub a0, t0, a0" << std::endl; }
                 else if (op_ == "*") { stream << "  mul a0, t0, a0" << std::endl; }
@@ -82,7 +88,7 @@ public:
         }
         else // Relational Operations
         {
-            if (operand_type == Context::Type::INT) {
+            if (operand_type == Context::Type::INT || operand_type == Context::Type::CHAR) {
                 if (op_ == "==") { stream << "  sub a0, t0, a0\n  seqz a0, a0" << std::endl; }
                 else if (op_ == "!=") { stream << "  sub a0, t0, a0\n  snez a0, a0" << std::endl; }
                 else if (op_ == "<") { stream << "  slt a0, t0, a0" << std::endl; }

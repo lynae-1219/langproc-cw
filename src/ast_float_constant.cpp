@@ -1,10 +1,10 @@
 #include <iomanip>
-#include "ast_float_constant.hpp" // AMENDED: Added the missing include for this file's own header.
-#include "ast_context.hpp"        // AMENDED: Included for the Context class.
+#include "ast_float_constant.hpp" 
+#include "ast_context.hpp"  
 
 namespace ast {
 
-// We need to emit the float value into memory and then load it.
+
 void FloatConstant::EmitRISC(std::ostream& stream, Context& context) const {
     int label_id = context.GetUniqueLabelId();
     stream << ".section .rodata" << std::endl;
@@ -19,4 +19,4 @@ void FloatConstant::Print(std::ostream& stream) const {
     stream << value_;
 }
 
-} // namespace ast
+} 

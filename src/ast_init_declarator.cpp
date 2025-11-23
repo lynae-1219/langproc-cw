@@ -16,7 +16,7 @@ void InitDeclarator::EmitRISC(std::ostream& stream, Context& context) const {
         int offset = context.GetVariableOffset(var_name);
         Context::Type type = context.GetVariableType(var_name);
 
-        if (type == Context::Type::INT) {
+        if (type == Context::Type::INT || type == Context::Type::CHAR) {
             stream << "  sw a0, " << offset << "(s0)" << std::endl;
         } else if (type == Context::Type::FLOAT) {
             stream << "  fsw fa0, " << offset << "(s0)" << std::endl;
@@ -45,4 +45,25 @@ std::string InitDeclarator::GetName() const {
     throw std::runtime_error("Could not find name in InitDeclarator");
 }
 
-} // namespace ast
+int InitDeclarator::GetArraySize() const {
+    if (const auto* dd = dynamic_cast<const DirectDeclarator*>(declarator_.get())) {
+        return dd->GetArraySize();
+    }
+    return 0;
+}
+
+bool InitDeclarator::IsFunction() const {
+    if (const auto* dd = dynamic_cast<const DirectDeclarator*>(declarator_.get())) {
+        return dd->IsFunction();
+    }
+    return false;
+}
+
+bool InitDeclarator::IsPointer() const {
+    if (const auto* dd = dynamic_cast<const DirectDeclarator*>(declarator_.get())) {
+        return dd->IsPointer();
+    }
+    return false;
+}
+
+}

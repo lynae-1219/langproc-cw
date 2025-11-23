@@ -8,7 +8,7 @@ namespace ast {
 void FunctionCall::EmitRISC(std::ostream& stream, Context& context) const {
     const auto* args_list_node = dynamic_cast<const NodeList*>(arguments_.get());
     
-    // --- Phase 1: Evaluate all arguments and save their results temporarily on the stack ---
+    //Evaluate all arguments and save their results temporarily on the stack
     int temp_stack_used = 0;
     std::vector<Context::Type> arg_types;
     std::vector<int> arg_sizes;
@@ -35,19 +35,15 @@ void FunctionCall::EmitRISC(std::ostream& stream, Context& context) const {
         }
     }
 
-    // --- Phase 2: Pop temporary results into the correct final argument registers ---
-    // At this point, the stack has all the argument results, with the LAST argument at the top (0(sp)).
-    // We now load them into a0, a1, ..., fa0, fa1, ... in the correct order.
     
     int int_arg_idx = 0;
     int float_arg_idx = 0;
 
-    // Iterate through the arguments from LEFT to RIGHT (argument 0 to N-1)
+
     for (size_t i = 0; i < arg_types.size(); ++i) {
         Context::Type arg_type = arg_types[i];
         
-        // Calculate the offset for the i-th argument from the CURRENT stack pointer.
-        // The first argument pushed (i=0) is at the bottom of our temp stack area.
+
         int arg_offset = temp_stack_used - std::accumulate(arg_sizes.begin(), arg_sizes.begin() + i + 1, 0);
 
         if (arg_type == Context::Type::INT && int_arg_idx < 8) {
@@ -63,7 +59,6 @@ void FunctionCall::EmitRISC(std::ostream& stream, Context& context) const {
         }
     }
     
-    // --- Phase 3: Deallocate temporary stack space and make the call ---
     if (temp_stack_used > 0) {
         stream << "  addi sp, sp, " << temp_stack_used << "\n";
     }

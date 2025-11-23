@@ -10,8 +10,8 @@ class Node {
 public:
     virtual ~Node() = default;
 
-    // ADDED: A pure virtual function to query the type of an expression node.
     virtual Context::Type GetType(Context& context) const = 0;
+    virtual bool IsPointer(Context& context) const { (void)context; return false; }
 
     virtual void EmitRISC(std::ostream& stream, Context& context) const = 0;
     virtual void Print(std::ostream& stream) const = 0;

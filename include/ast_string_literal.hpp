@@ -1,25 +1,26 @@
 #pragma once
 #include "ast_node.hpp"
+#include <string>
 
 namespace ast {
 
-class IntConstant : public Node
-{
+class StringLiteral : public Node {
 private:
-    int value_;
+    std::string value_;
+    static int string_counter_;
 
 public:
-    IntConstant(int value) : value_(value) {}
-
+    StringLiteral(std::string value) : value_(std::move(value)) {}
 
     Context::Type GetType(Context& context) const override {
-        (void)context; 
+        (void)context;
         return Context::Type::INT;
     }
 
     void EmitRISC(std::ostream& stream, Context& context) const override;
     void Print(std::ostream& stream) const override;
-    int GetValue() const { return value_; }
+
+    const std::string& GetValue() const { return value_; }
 };
 
-} // namespace ast
+}

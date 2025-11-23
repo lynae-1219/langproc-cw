@@ -8,6 +8,11 @@ void WhileStatement::EmitRISC(std::ostream& stream, Context& context) const {
     std::string start_label = ".L_WHILE_START_" + std::to_string(label_id);
     std::string end_label = ".L_WHILE_END_" + std::to_string(label_id);
 
+    std::string saved_break = context.GetBreakLabel();
+    std::string saved_continue = context.GetContinueLabel();
+    context.SetBreakLabel(end_label);
+    context.SetContinueLabel(start_label);
+
     stream << start_label << ":" << std::endl;
 
     condition_->EmitRISC(stream, context);
@@ -19,6 +24,9 @@ void WhileStatement::EmitRISC(std::ostream& stream, Context& context) const {
     stream << "  j " << start_label << std::endl;
 
     stream << end_label << ":" << std::endl;
+
+    context.SetBreakLabel(saved_break);
+    context.SetContinueLabel(saved_continue);
 }
 
 void WhileStatement::Print(std::ostream& stream) const {
@@ -28,4 +36,4 @@ void WhileStatement::Print(std::ostream& stream) const {
     body_->Print(stream);
 }
 
-} // namespace ast
+}

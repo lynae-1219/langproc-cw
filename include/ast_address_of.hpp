@@ -3,16 +3,16 @@
 
 namespace ast {
 
-class Assign : public Node {
+class AddressOf : public Node {
 private:
-    NodePtr lhs_;
-    NodePtr rhs_;
+    NodePtr operand_;
 
 public:
-    Assign(NodePtr lhs, NodePtr rhs) : lhs_(std::move(lhs)), rhs_(std::move(rhs)) {}
+    AddressOf(NodePtr operand) : operand_(std::move(operand)) {}
 
     Context::Type GetType(Context& context) const override {
-        return lhs_->GetType(context);
+        (void)context;
+        return Context::Type::INT;
     }
 
     void EmitRISC(std::ostream& stream, Context& context) const override;
